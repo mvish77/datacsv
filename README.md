@@ -1,4 +1,4 @@
-# 📊 datacsv.py – Lightweight CSV Database in Pure Python
+# 📊 datacsv – Lightweight CSV Database in Pure Python
 
 > A minimalist, zero-dependency, file-based CSV database for local Python automation.
 
@@ -66,7 +66,7 @@ print(db.find_all())
 ## 🧠 API Reference – All Functions with Examples
 Here are the core methods provided by `CSVDatabase`, along with their usage.
 
-### 1. `insert(data: dict)` - 
+### 1. `insert(data: dict)`
 Inserts a new row into the CSV.
 ```python
 db.insert({'id': 1, 'name': 'Alice', 'email': 'alice@example.com'})
