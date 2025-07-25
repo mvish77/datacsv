@@ -34,7 +34,7 @@ class CSVDatabase:
                                     For example: db = CSVDatabase('my_database.csv',['field1,'field2','field3'])""") 
         else:
             try:
-                self.load()
+                self._load()
             except:
                 raise FileNotFoundError("""CSVDatabase: Database is empty. provide fields to create it.\n
                                     Your database should not be empty\n
@@ -79,16 +79,33 @@ class CSVDatabase:
             return True
 
 
-    def find_all(self) -> list:
+    def find_all(self, key: str|None = None) -> list:
         """
-        find_all is used to find all rows in database. It returns a list with auto type casting.
+        find_all is used to:
+        Return all rows from the database as a list of dictionaries if no key is provided.\n
+        If a key is provided, return a list of all values for that key (with auto casting).
+        Example:
+        ```python
+        db = CSVDatabase('user.csv',['id','name','age'])
+        db.find_all('name')
+        ```
         """
         with open(self.db_name, mode='r', newline='', encoding='UTF-8') as f:
             reader = csv.DictReader(f, quoting=csv.QUOTE_MINIMAL)
-            return [ {k: self._auto_cast(v) for k, v in row.items()} for row in reader ]
+            rows = [{k: self._auto_cast(v) for k, v in row.items()} for row in reader]
+
+            if key is not None:
+                if key not in self.headers:
+                    raise KeyError(f"Field '{key}' does not exist in the database headers.")
+                return [self._auto_cast(row.get(key)) for row in rows]
+
+            return rows
 
 
-    def find(self, key:str, value):
+
+
+
+    def find(self, key:str, value:str|int|float|bool):
         """
         used to find row(s) with a specific key and value. Supports type-safe search
         """
@@ -126,7 +143,7 @@ class CSVDatabase:
             ]
 
 
-    def delete(self, key: str, value) -> bool:
+    def delete(self, key:str, value:str|int|float|bool) -> bool:
         """
         perform delete operation to database
         """
@@ -135,7 +152,7 @@ class CSVDatabase:
         deleted = False
         with open(self.db_name, 'r', newline='', encoding='utf-8') as f:
             reader = csv.DictReader(f, quoting=csv.QUOTE_MINIMAL)
-            rows = [r for r in reader if not (r.get(key) == value and (deleted := True))]
+            rows = [r for r in reader if not (self._auto_cast(r.get(key)) == value and (deleted := True))]
         if deleted:
             with open(self.db_name, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.DictWriter(f, fieldnames=self.headers, quoting=csv.QUOTE_MINIMAL)
@@ -175,7 +192,7 @@ class CSVDatabase:
         return found
 
 
-    def update(self, key, value, new_data: dict)->bool:
+    def update(self, key:str, value:str|int|float|bool, new_data: dict)->bool:
         """
         Update rows in database
         """
@@ -196,7 +213,7 @@ class CSVDatabase:
         return updated
 
     
-    def update_where(self, condition, new_data):
+    def update_where(self, condition, new_data:dict):
         """
         same as find_where, update_where() accept collable function or dictionary to filter the row data from database and return boolean as output.\n
         You can pass argument like:
@@ -335,7 +352,8 @@ class CSVDatabase:
             return value
         
 
-    def load(self):
+    def _load(self):
+        """Function to load existing csv database"""
         with open(self.db_name, mode='r', newline='', encoding='UTF-8') as f:
             reader = csv.reader(f)
             default_headers = next(reader)
