@@ -7,7 +7,7 @@ import csv
 from typing import Collection
 
 class CSVDatabase:
-    """Creating a lightweight, zero-dependency, file-based database system in 
+    """😎 Creating a lightweight, zero-dependency, file-based database system in 
     Python using CSV as the storage backend is a great idea for small-scale applications or CLI tools.
     It helpful to create application with lightweight file based database.
     It helps to store: 
@@ -16,31 +16,44 @@ class CSVDatabase:
         microservices logs
         basic user data inputs"""
 
-    def __init__(self, db_name: str, fields:Collection[str]):
-        """You need 2 inputs as an argument to create object of datacsv.
+    def __init__(self, db_name: str, headers:Collection[str]=[]):
+        """You need🤞 2 inputs as an argument to create object of datacsv.
             1. Database name - You have to provide database name in string format
             2. Fields - Headers for table that needed to perform query and update operation"""
         self.db_name = db_name if db_name.endswith(".csv") else db_name + ".csv"
-        self.headers = fields
+        self.headers = headers
 
         if not os.path.exists(self.db_name):
-            if fields:
+            if headers:
                 with open(self.db_name, mode='w', newline='', encoding='UTF-8') as f:
-                    writer = csv.DictWriter(f, fieldnames=fields, quoting=csv.QUOTE_MINIMAL)
+                    writer = csv.DictWriter(f, fieldnames=headers, quoting=csv.QUOTE_MINIMAL)
                     writer.writeheader()
             else:
                 raise ValueError("""CSVDatabase: Database does not exist, provide fields to create it.
                                     You must provide Database name in String and fields in List 
-                                    For example: db = CSVDatabase('users.csv',['name,'age','course'])""")
+                                    For example: db = CSVDatabase('my_database.csv',['field1,'field2','field3'])""") 
+        else:
+            try:
+                self.load()
+            except:
+                raise FileNotFoundError("""CSVDatabase: Database is empty. provide fields to create it.\n
+                                    Your database should not be empty\n
+                                    Create new database with: db = CSVDatabase('my_database.csv',['field1,'field2','field3'])""")
 
 
     def insert(self, row:dict,fill_missing:bool=False)-> bool:
         """
-        Perform single insert operation to database
+        Perform single insert operation to database.
+        insert method accept row as dict, fill_missing in boolean
+        `fill_missing` = True --> it fill null values
+        example:
+        ```
+        insert(row,fill_missing=False)
+        ```
         """
         #check for intance
         if not isinstance(row, dict):
-            raise ValueError("""Your provided row is not in dictionary format.
+            raise TypeError("""Your provided row is not in dictionary format.
             Your input row: {row}
             Check your input row is valid dict or not.""")
         #check for existance
@@ -58,7 +71,7 @@ class CSVDatabase:
         # validate extra keys and raise error if user entered extra keys
         extra_keys = [key for key in row if key not in self.headers]
         if extra_keys:
-            raise ValueError("""Unexpected keys in row: {extra_keys}.
+            raise KeyError("""Unexpected keys in row: {extra_keys}.
             Your keys must be same as your fields.""")
         with open(self.db_name, mode='a', newline='',encoding='UTF-8') as f:
             writer = csv.DictWriter(f, fieldnames=self.headers, quoting=csv.QUOTE_MINIMAL)
@@ -104,7 +117,7 @@ class CSVDatabase:
         find_where() has data called 'row' which you can use to perform a conditional operation.
         """
         if condition is None:
-            raise ValueError("Your condition function is none. Function should not be none")
+            raise TypeError("Your condition function is none. Function should not be none")
         with open(self.db_name, 'r', newline='', encoding='UTF-8') as f:
             reader = csv.DictReader(f, quoting=csv.QUOTE_MINIMAL)
             return [
@@ -118,7 +131,7 @@ class CSVDatabase:
         perform delete operation to database
         """
         if key not in self.headers:
-            raise ValueError(f"Invalid column name '{key}'")
+            raise KeyError(f"Invalid column name '{key}'")
         deleted = False
         with open(self.db_name, 'r', newline='', encoding='utf-8') as f:
             reader = csv.DictReader(f, quoting=csv.QUOTE_MINIMAL)
@@ -144,16 +157,15 @@ class CSVDatabase:
         It return Boolean True or False
         """
         if condition is None:
-            raise ValueError("The condition must be a valid dictionary or function. None provided.")
+            raise TypeError("The condition must be a valid dictionary or function. None provided.")
         found = False
         with open(self.db_name, 'r', newline='', encoding='UTF-8') as f:
             reader = csv.DictReader(f, quoting=csv.QUOTE_MINIMAL)
             rows = []
             for r in reader:
-                casted_row = self._auto_cast(r)
-                if self._match(casted_row, condition):
-                    found = True  
-                    continue      
+                if self._match(r, condition):
+                    found = True
+                    continue  
                 rows.append(r)
         if found:
             with open(self.db_name, 'w', newline='', encoding='UTF-8') as f:
@@ -186,32 +198,37 @@ class CSVDatabase:
     
     def update_where(self, condition, new_data):
         """
-        same as find_where, update_where() accept collable function or dictionary to filter the row data from database and return boolean as output.
+        same as find_where, update_where() accept collable function or dictionary to filter the row data from database and return boolean as output.\n
         You can pass argument like:
         
-        1. dictionary argument: update_where({"name": "raj"},{"name": "mahesh"})
-        
-        2. function: def name_starts_with_a(row):
-                        return row["name"].startswith("m")
-                    update_where(name_starts_with_a,{"city": "Mumbai"})
-        
-        3. lambda:  delete_where(lambda r: int(r["age"]) > 30, {"status": "senior"})
-
-        find_where has data called 'row' which you can use to perform a conditional operation.
+        1. dictionary argument: 
+        ```
+        update_where({"name": "raj"},{"name": "mahesh"})
+        ```
+        2. function: 
+        ```
+        def name_starts_with_a(row):
+                return row["name"].startswith("m")
+        update_where(name_starts_with_a,{"city": "Mumbai"})
+        ```
+        3. lambda:  
+        ```
+        delete_where(lambda r: int(r["age"]) > 30, {"status": "senior"})
+        ```
+        find_where has data called 'row' which you can use to perform a conditional operation.\n
         It return Boolean True or False
         """
         if not isinstance(new_data, dict) or not new_data:
             raise ValueError("new_data must be a non-empty dictionary.")
         for k in new_data:
             if k not in self.headers:
-                raise ValueError(f"Invalid column name: '{k}'")
+                raise KeyError(f"Invalid column name: '{k}'")
         updated = False
         with open(self.db_name, 'r', newline='', encoding='UTF-8') as f:
             reader = csv.DictReader(f, quoting=csv.QUOTE_MINIMAL)
             rows = []
             for r in reader:
-                casted_row = self._auto_cast(r)
-                if self._match(casted_row, condition):
+                if self._match(r, condition):
                     r.update({k: str(v) for k, v in new_data.items()})
                     updated = True
                 rows.append(r)
@@ -225,7 +242,7 @@ class CSVDatabase:
 
     def delete_db(self)->bool:
         """
-        single method to delete all database
+        Delete whole database. Make sure to backup your database before running this method. It wipe out everything
         """
         if os.path.exists(self.db_name):
             os.remove(self.db_name)
@@ -233,41 +250,54 @@ class CSVDatabase:
         return False
     
 
-    def to_json(self):
+    def to_json(self, indent:int|None=2):
+        """This function accept one string argument `indent`.\n
+        It accept number as string for applying indent space to output.\n
+        Use case: 
+        ```mydb = CSVDatabase('user.csv',['id','name'])
+        mydb.to_json(indent=4)
+        # OR
+        mydb.to_json()
+        """
         import json
         try:
             with open(self.db_name, 'r', newline='', encoding='UTF-8') as f:
                 headers = f.readline().strip().split(",")
-                data = [dict(zip(headers, line.strip().split(","))) for line in f if line.strip()]
-            return json.dumps(data, indent=2)
+                data = [dict(zip(headers, [self._auto_cast(l) for l in line.strip().split(",")])) for line in f if line.strip()]
+            return json.dumps(data, indent=indent)
         except Exception as e:
-            print(f"Error while generating the json. Here is full log: {e}")
-            return "[]"
+            raise RuntimeError(f"Error while converting CSV to JSON: {e}") from e
 
 
-    def to_html(self):
+    def to_html(self, table_class:str|None=None):
+        """This function accept one string argument `table_class`.\n
+        It accept class-name as string for applying css to this class.\n
+        Use case: 
+        ```mydb = CSVDatabase('user.csv',['id','name'])
+        mydb.to_html(table_class='my-class')
+        # OR
+        mydb.to_html()
+        ```"""
         try:
             with open(self.db_name, 'r', newline='', encoding='UTF-8') as f:
                 lines = [line.strip().split(",") for line in f if line.strip()]
                 if not lines:
-                    return "<table></table>"
+                    return '<table></table>'
             headers = lines[0]
             rows = lines[1:]
-            html = "<table border='1'>\n<tr>"
+            html =  f'<table border="1" class="{table_class}">\n,<tr>' if table_class else "<table border='1'>\n<tr>"
             html += "".join(f"<th>{h}</th>" for h in headers) + "</tr>\n"
             for row in rows:
                 html += "<tr>" + "".join(f"<td>{v}</td>" for v in row) + "</tr>\n"
             html += "</table>"
             return html
         except Exception as e:
-            print(f"[to_html] Error: {e}")
-            return "<table></table>"
+            raise RuntimeError(f"Error while rendering to HTML. Here is error log: {e}") from e
 
 
     #private function to match condition and perform update & delete operation
     def _match(self, row, condition):
-        """
-        _match checks if a row satisfies the given condition.
+        """_match checks if a row satisfies the given condition.
         Supports function or dictionary as condition.
         Auto-casts row values for type-safe comparisons.
         """
@@ -277,7 +307,7 @@ class CSVDatabase:
             try:
                 return condition(casted_row)
             except Exception as e:
-                raise ValueError(f"Error in condition function: {e}") from e
+                raise RuntimeError(f"Error in condition function: {e}") from e
         elif isinstance(condition, dict):
             if not condition:
                 raise ValueError("""Provided dictionary is an empty
@@ -292,7 +322,7 @@ class CSVDatabase:
 
     # advance feature - type casting for more better filter
     def _auto_cast(self, value):
-        # A private function to autocast integer, boolean, float values from string
+        """This function try to cast value to boolean, integer or float. If value is not castable then return in string"""
         if value.lower() in {"true", "false"}:
             return value.lower() == "true"
         try:
@@ -303,3 +333,10 @@ class CSVDatabase:
             return float(value)
         except ValueError:
             return value
+        
+
+    def load(self):
+        with open(self.db_name, mode='r', newline='', encoding='UTF-8') as f:
+            reader = csv.reader(f)
+            default_headers = next(reader)
+            self.headers = default_headers
